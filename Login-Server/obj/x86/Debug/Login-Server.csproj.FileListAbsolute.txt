@@ -1,0 +1,5 @@
+C:\Serv\fhx\ferentus-emu\Login-Server\obj\x86\Debug\ResolveAssemblyReference.cache
+C:\Serv\fhx\ferentus-emu\Login-Server\bin\Debug\Login-Server.exe
+C:\Serv\fhx\ferentus-emu\Login-Server\bin\Debug\Login-Server.pdb
+C:\Serv\fhx\ferentus-emu\Login-Server\obj\x86\Debug\Login-Server.exe
+C:\Serv\fhx\ferentus-emu\Login-Server\obj\x86\Debug\Login-Server.pdb
