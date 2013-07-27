@@ -38,7 +38,7 @@ namespace Login_Server
                 IPHostEntry ipHost = Dns.GetHostEntry("");
 
                 // Gets first IP address associated with a localhost 
-                IPAddress ipAddr = IPAddress.Parse("127.0.0.1");
+                IPAddress ipAddr = IPAddress.Parse("0.0.0.0");
 
                 // Creates a network endpoint 
                 IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, 29000);
@@ -55,7 +55,7 @@ namespace Login_Server
 
                 // Places a Socket in a listening state and specifies the maximum 
                 // Length of the pending connections queue 
-                sListener.Listen(10);
+                sListener.Listen(100);
 
                 // Begins an asynchronous operation to accept an attempt 
                 AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
@@ -144,55 +144,78 @@ namespace Login_Server
                     content = BitConverter.ToString(bytes).Replace("-", " ");
                     Console.WriteLine("Decoded " + length.ToString() + " bytes from client: " + content);
 
-                    // Op-Code 1 -  Login Request
-                    if (bytes [0] == 0x00 & bytes[1] == 0x01)
+                    if (bytes.Length >= 2)
                     {
-                        byte[] username_bytes = new byte[16];
-                        Array.Copy(bytes, 2, username_bytes, 0, 16);
-                        username_bytes = Split(0x00, username_bytes);
-                        String username = Encoding.Default.GetString(username_bytes);
+                        // Op-Code 1 -  Login Request
+                        if (bytes[0] == 0x00 & bytes[1] == 0x01)
+                        {
+                            byte[] username_bytes = new byte[16];
+                            Array.Copy(bytes, 2, username_bytes, 0, 16);
+                            username_bytes = Split(0x00, username_bytes);
+                            String username = Encoding.Default.GetString(username_bytes);
 
-                        byte[] password_bytes = new byte[16];
-                        Array.Copy(bytes, 18, password_bytes, 0, 16);
-                        password_bytes = Split(0x00, password_bytes);
-                        String password = Encoding.Default.GetString(password_bytes);
+                            byte[] password_bytes = new byte[16];
+                            Array.Copy(bytes, 18, password_bytes, 0, 16);
+                            password_bytes = Split(0x00, password_bytes);
+                            String password = Encoding.Default.GetString(password_bytes);
 
-                        byte[] version_bytes = new byte[4];
-                        Array.Copy(bytes, 34, version_bytes, 0, 4);
+                            byte[] version_bytes = new byte[4];
+                            Array.Copy(bytes, 34, version_bytes, 0, 4);
 
-                        Console.WriteLine("Login Request: username=" + username + " password=" + password + " client_version=" + BitConverter.ToString(version_bytes).Replace("-", "."));
+                            Console.WriteLine("Login Request: username=" + username + " password=" + password + " client_version=" + BitConverter.ToString(version_bytes).Replace("-", "."));
 
-                        int[] accountIDs = { 32, 48 };
-                        String[] accountnames = { "rbb138","test" };
-                        String[] passwords = { "password", "test" };
-                        byte[] version = { 0x00, 0x04, 0x05, 0x00 };
-                        byte returncode;
+                            int[] accountIDs = { 32, 48 };
+                            String[] accountnames = { "rbb138", "test" };
+                            String[] passwords = { "password", "test" };
+                            byte[] version = { 0x00, 0x04, 0x05, 0x00 };
+                            byte returncode;
 
-                        if (BitConverter.ToInt32(version_bytes, 0) == BitConverter.ToInt32(version, 0))
-                            if (accountnames.Contains(username))
-                                if (passwords.Contains(password))
-                                    returncode = 0x01; //more checks for already logged in and banned users here
+                            if (BitConverter.ToInt32(version_bytes, 0) == BitConverter.ToInt32(version, 0))
+                                if (accountnames.Contains(username))
+                                    if (passwords.Contains(password))
+                                        returncode = 0x01; //more checks for already logged in and banned users here
+                                    else
+                                        returncode = 0x04;
                                 else
-                                    returncode = 0x04;
+                                    returncode = 0x03;
                             else
-                                returncode = 0x03;
-                        else
-                            if (BitConverter.ToInt32(version_bytes, 0) < BitConverter.ToInt32(version, 0))
-                                returncode = 0x02;
-                            else
-                                returncode = 0x07;
+                                if (BitConverter.ToInt32(version_bytes, 0) < BitConverter.ToInt32(version, 0))
+                                    returncode = 0x02;
+                                else
+                                    returncode = 0x07;
 
-                        byte[] payload = { 0x00, 0x00, returncode, 0x00 };
-                        byte[] returnpacket = { 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, };
-                        Console.WriteLine("Sent " + returnpacket.Length + " bytes to Client: " + BitConverter.ToString(returnpacket).Replace("-", " ").Substring(0,6) + BitConverter.ToString(payload).Replace("-", " "));
-                        Array.Copy(encode(payload), 0, returnpacket, 2, payload.Length);
+                            byte[] payload = { 0x00, 0x00, returncode, 0x00 };
+                            byte[] returnpacket = { 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, };
+                            Console.WriteLine("Sent " + returnpacket.Length + " bytes to Client: " + BitConverter.ToString(returnpacket).Replace("-", " ").Substring(0, 6) + BitConverter.ToString(payload).Replace("-", " "));
+                            Array.Copy(encode(payload), 0, returnpacket, 2, payload.Length);
 
-                        handler.BeginSend(returnpacket, 0, returnpacket.Length, 0,
-                        new AsyncCallback(SendCallback), handler);
+                            handler.BeginSend(returnpacket, 0, returnpacket.Length, 0,
+                            new AsyncCallback(SendCallback), handler);
+                        }
+
+                        // UnKnown - zone request?
+                        else if (bytes.Length >= 3)
+                        {
+                            if (bytes[0] == 0x92 & bytes[1] == 0x42 & bytes[2] == 0xC4)
+                            {
+                                byte[] payload = { 0x88, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+                                byte[] returnpacket = { 0x00, (byte)payload.Length, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+                                Array.Copy(encode(payload), 0, returnpacket, 2, payload.Length);
+                                Console.WriteLine("Sent " + returnpacket.Length + " bytes to Client: " + BitConverter.ToString(returnpacket).Replace("-", " ").Substring(0, 6) + BitConverter.ToString(payload).Replace("-", " "));
+                                handler.BeginSend(returnpacket, 0, returnpacket.Length, 0,
+                                new AsyncCallback(SendCallback), handler);
+                            }
+                        }
                     }
-
-                    // Op-Code 2 - UnKnown
                 }
+                    handler.BeginReceive(
+                        buffer,        // An array of type Byt for received data 
+                        0,             // The zero-based position in the buffer  
+                        buffer.Length, // The number of bytes to receive 
+                        SocketFlags.None,// Specifies send and receive behaviors 
+                        new AsyncCallback(ReceiveCallback),//An AsyncCallback delegate 
+                        obj            // Specifies infomation for receive operation 
+                        );
             }
             catch (Exception exc)
             {
